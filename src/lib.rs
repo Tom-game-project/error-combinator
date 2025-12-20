@@ -1,42 +1,68 @@
-pub trait Check<T:?Sized> 
+use std::marker::PhantomData;
+
+pub trait Check<T, PreCheckState>
     where Self: Sized
 {
+    type Next;
     type Error;
 
-    fn check(&self, value: &T) -> Result<(), Self::Error>;
-    fn and<A>(self, other: A) -> And<Self, A>
-        where A:Check<T, Error = Self::Error> {
-            And { a: self, b: other }
+    fn check(&self, value: CheckState<T, PreCheckState>) -> Result<CheckState<T, Self::Next>, Self::Error>;
+
+    fn and<B>(self, b: B) -> And<Self, B, Self::Error>
+    where
+        B: Check<T, Self::Next, Error = Self::Error>,
+    {
+        And { a: self, b, _err: PhantomData }
     }
 }
 
-impl<T:?Sized, E, F> Check<T> for F
-    where F: Fn(&T) -> Result<(), E>,
+pub struct CheckState<T: Sized, S> 
+    where Self: Sized 
 {
+    value: T,
+    _state: PhantomData<S>
+}
+
+pub struct And<A, B, E> {
+    a: A,
+    b: B,
+    _err: PhantomData<E>
+}
+
+impl<T, E, Pre, Next, F> Check<T, Pre> for F
+    where F: Fn(CheckState<T, Pre>) -> Result<CheckState<T, Next>, E>,
+{
+    type Next = Next;
     type Error = E;
 
-    fn check(&self, value: &T) -> Result<(), E> {
+    fn check(&self, value: CheckState<T, Pre>) -> Result<CheckState<T, Self::Next>, Self::Error> {
         self(value)
     }
 }
 
-// use std::marker::PhantomData;
-
-struct And<A, B> {
-    a: A,
-    b: B,
-}
-
-impl <T:?Sized, A, B, E> Check<T> for And<A, B>
-    where A: Check<T, Error = E>,
-          B: Check<T, Error = E>,
+impl <T, A, B, E, Pre, Mid, Next> Check<T, Pre> for And<A, B, E>
+    where A: Check<T, Pre, Error = E, Next = Mid>,
+          B: Check<T, Mid, Error = E, Next = Next>,
 {
+    type Next = Next;
     type Error = E;
 
-    fn check(&self, value: &T) -> Result<(), Self::Error> {
-        self.a.check(value)?;
-        self.b.check(value)?;
-        Ok(())
+    fn check(&self, value: CheckState<T, Pre>) -> Result<CheckState<T, Self::Next>, Self::Error> {
+        match self.a.check(value) {
+            Ok(a) => {
+                match self.b.check(a) {
+                    Ok(b) => {
+                        return Ok(b);
+                    }
+                    Err(e) => {
+                        return Err(e);
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
     }
 }
 
@@ -44,22 +70,47 @@ impl <T:?Sized, A, B, E> Check<T> for And<A, B>
 
 pub enum ValidateErr {
     NotStartsWithHello,
-    NotEnoughtLength,
+    NotEnoughLength,
 }
 
-pub fn check_starts_with_hello(data: &str) -> Result<(), ValidateErr> {
-    if data.starts_with("hello") {
-        Ok(())
+struct checked;
+struct unchecked;
+
+pub struct ErrState<CheckStartsWithHello, CheckMin3> {
+    _check_starts_with_hello: PhantomData<CheckStartsWithHello>,
+    _check_min3: PhantomData<CheckMin3>
+}
+
+pub fn check_starts_with_hello(
+    data: CheckState<&str, ErrState<unchecked, unchecked>>) 
+-> Result<CheckState<&str, ErrState<checked, unchecked>>, ValidateErr> 
+{
+    if data.value.starts_with("hello") {
+        Ok(
+            CheckState { value: data.value,
+            _state: PhantomData 
+        }
+        )
     } else {
         Err(ValidateErr::NotStartsWithHello)
     }
 }
 
-pub fn check_min3(data: &str) -> Result<(), ValidateErr> {
-    if 0 < data.len() {
-        Ok(())
-    } else {
-        Err(ValidateErr::NotEnoughtLength)
+pub fn check_min3(
+    data: CheckState<&str, ErrState<checked, unchecked>>
+    )
+-> Result<CheckState<&str, ErrState<checked, checked>>, ValidateErr> 
+{
+    if 0 < data.value.len() {
+        Ok(
+            CheckState {
+                value: data.value,
+                _state: PhantomData 
+            }
+        )
+    }
+    else {
+        Err(ValidateErr::NotEnoughLength)
     }
 }
 
@@ -71,18 +122,18 @@ mod tests {
     fn it_works00() {
         {
             let data = "hello world";
+            let data: CheckState<&str, ErrState<unchecked, unchecked>> = CheckState{value:data, _state: PhantomData};
             let a = check_starts_with_hello;
 
-            // ここが修正点
-            let result = a.check(&data);
+            let result = a.check(data);
             assert!(result.is_ok());
         }
         {
             let data = "world hello";
+            let data: CheckState<&str, ErrState<unchecked, unchecked>> = CheckState{value:data, _state: PhantomData};
             let a = check_starts_with_hello;
 
-            // ここが修正点
-            let result = a.check(&data);
+            let result = a.check(data);
             assert!(result.is_err());
         }
         // println!("Ok!!!");
@@ -91,10 +142,11 @@ mod tests {
     #[test]
     fn it_works01() {
         let data = "hello world";
+        let data: CheckState<&str, ErrState<unchecked, unchecked>> = CheckState{value:data, _state: PhantomData};
         let a = 
             check_starts_with_hello
             .and(check_min3);
-        let result = a.check(&data);
+        let result = a.check(data);
 
         assert!(result.is_ok());
     }
