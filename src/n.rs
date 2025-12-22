@@ -1,30 +1,50 @@
 use std::marker::PhantomData;
 
-use crate::ValidateErr;
-
 trait Check2<T, Pre> 
     where Self:Sized
 {
-    type Pass;
-    type Fail;
+    type State;
     type Error;
 
     fn check(self, value: CheckState2<T, Pre>)
-        -> CheckOutcome<T, Self::Pass, Self::Fail, Self::Error>;
+        -> CheckOutcome<T, Self::State, Self::Error>;
 
-    fn and<B>(self, b: B) -> And<Self, B>
+    fn and<B, C>(self, b: B) -> And<Self, B, C>
     where
-        B: Check2<T, Self::Pass> {
-        And { a: self, b }
+        B: Check2<T, Self::State>,
+        C: CombineError<Self::Error, B::Error>
+    {
+        And { a: self, b, _combine:PhantomData }
     }
 }
 
-enum CheckOutcome<T, Pass, Fail, E> {
-    Passed(CheckState2<T, Pass>),
+enum CheckOutcome<T, State, E> {
+    Passed(CheckState2<T, State>),
     Failed{
-        state: CheckState2<T, Fail>,
+        state: CheckState2<T, State>,
         err: E
     },
+}
+
+trait CombineError<EA, EB> {
+    type Out;
+
+    fn left(ea: EA) -> Self::Out;
+    fn right(eb: EB) -> Self::Out;
+}
+
+struct DefaultCombine;
+
+impl<E> CombineError<E, E> for DefaultCombine {
+    type Out = E;
+
+    fn left(ea: E) -> Self::Out {
+        ea
+    }
+
+    fn right(eb: E) -> Self::Out {
+        eb
+    }
 }
 
 pub struct CheckState2<T: Sized, S> 
@@ -34,27 +54,23 @@ pub struct CheckState2<T: Sized, S>
     _state: PhantomData<S>
 }
 
-enum AndFail<A, B> {
-    Left(A),
-    Right(B),
-}
-
-struct And<A, B> {
+struct And<A, B, C> {
     a: A,
     b: B,
+    _combine: PhantomData<C>
 }
 
-impl<T, Pre, A, B, E> Check2<T, Pre> for And<A, B>
+impl<T, Pre, A, B, C> Check2<T, Pre> for And<A, B, C>
 where
-    A: Check2<T, Pre, Error = E>,
-    B: Check2<T, A::Pass, Error = E>,
+    A: Check2<T, Pre>,
+    B: Check2<T, A::State>,
+    C: CombineError<A::Error, B::Error>,
 {
-    type Pass = B::Pass;
-    type Fail = AndFail<A::Fail, B::Fail>; // TODO
-    type Error = E;
+    type State = B::State;
+    type Error = C::Out;
 
     fn check(self, value: CheckState2<T, Pre>)
-        -> CheckOutcome<T, Self::Pass, Self::Fail, Self::Error>
+        -> CheckOutcome<T, Self::State, Self::Error>
     {
         match self.a.check(value) {
             CheckOutcome::Passed(v) => {
@@ -69,7 +85,7 @@ where
                         // success A and failed B
                         CheckOutcome::Failed{
                             state: CheckState2 { value: state.value, _state: PhantomData },
-                            err
+                            err: C::right(err)
                         }
                     }
                 }
@@ -78,23 +94,22 @@ where
                 // failed B
                 CheckOutcome::Failed{
                     state: CheckState2 { value: state.value, _state: PhantomData },
-                    err
+                    err: C::left(err)
                 }
             }
         }
     }
 }
 
-impl<T, Pre, Pass, Fail, F, E> Check2<T, Pre> for F
+impl<T, Pre, State, F, E> Check2<T, Pre> for F
 where
-    F: Fn(CheckState2<T, Pre>) -> CheckOutcome<T, Pass, Fail, E>,
+    F: Fn(CheckState2<T, Pre>) -> CheckOutcome<T, State, E>,
 {
-    type Pass = Pass;
-    type Fail = Fail;
+    type State = State;
     type Error = E;
 
     fn check(self, value: CheckState2<T, Pre>)
-        -> CheckOutcome<T, Self::Pass, Self::Fail, Self::Error>
+        -> CheckOutcome<T, Self::State, Self::Error>
     {
         self(value)
     }
@@ -117,7 +132,7 @@ enum ValidateErr2 {
 fn check_starts_with_hello(
     data: CheckState2<&str, ErrState<unchecked, unchecked>>) 
 -> 
-CheckOutcome<&str, ErrState<checked, unchecked>, ValidateErr, ValidateErr2>
+CheckOutcome<&str, ErrState<checked, unchecked>, ValidateErr2>
 {
     if data.value.starts_with("hello") {
         CheckOutcome::Passed(
@@ -134,7 +149,7 @@ CheckOutcome<&str, ErrState<checked, unchecked>, ValidateErr, ValidateErr2>
 fn check_min6(
     data: CheckState2<&str, ErrState<checked, unchecked>>) 
 -> 
-CheckOutcome<&str, ErrState<checked, checked>, ValidateErr, ValidateErr2>
+CheckOutcome<&str, ErrState<checked, checked>, ValidateErr2>
 {
     if 6 < data.value.len() {
         CheckOutcome::Passed(
@@ -155,11 +170,10 @@ mod tests_n {
 
     #[test]
     fn n_works00() {
-
         let s = "hello w";
 
         let checker = check_starts_with_hello
-            .and(check_min6);
+            .and::<_, DefaultCombine>(check_min6);
         let r = checker.check(
             CheckState2 { value: s, _state: PhantomData }
         );
