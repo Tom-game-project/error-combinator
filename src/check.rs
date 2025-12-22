@@ -1,17 +1,22 @@
 use std::marker::PhantomData;
 
-trait Check2<T, Pre> 
+use crate::cmberr::{
+    CombineErrorBuilder,
+    CombineError
+};
+
+trait Check<T, Pre> 
     where Self:Sized
 {
     type State;
     type Error;
 
-    fn check(self, value: CheckState2<T, Pre>)
+    fn check(self, value: CheckState<T, Pre>)
         -> CheckOutcome<T, Self::State, Self::Error>;
 
     fn and<B, C>(self, b: B) -> And<Self, B, C>
     where
-        B: Check2<T, Self::State>,
+        B: Check<T, Self::State>,
         C: CombineErrorBuilder<Self::Error, B::Error>
     {
         And { a: self, b, _combine:PhantomData }
@@ -19,7 +24,7 @@ trait Check2<T, Pre>
 
     fn or<B, C>(self, b: B) -> Or<Self, B, C>
         where 
-            B: Check2<T, Self::State>,
+            B: Check<T, Self::State>,
             C: CombineErrorBuilder<Self::Error, B::Error>
     {
         Or { a: self, b, _combine: PhantomData }
@@ -27,58 +32,15 @@ trait Check2<T, Pre>
 }
 
 enum CheckOutcome<T, State, E> {
-    Passed(CheckState2<T, State>),
+    Passed(CheckState<T, State>),
     Failed{
-        state: CheckState2<T, State>,
+        state: CheckState<T, State>,
         err: E
     },
 }
 
-trait CombineError<EA, EB> {
-    type Out;
 
-    fn left(&mut self, ea: EA);
-    fn right(&mut self, eb: EB);
-    fn finish(self) -> Self::Out;
-}
-
-trait CombineErrorBuilder<EA, EB> {
-    type Combiner: CombineError<EA, EB, Out = Self::Out>;
-    type Out;
-
-    fn build() -> Self::Combiner;
-}
-
-impl<E> CombineErrorBuilder<E, E> for DefaultCombine<E> {
-    type Combiner = DefaultCombine<E>;
-    type Out = E;
-
-    fn build() -> Self::Combiner {
-        DefaultCombine { data:None }
-    }
-}
-
-struct DefaultCombine<E> {
-    data: Option<E>
-}
-
-impl<E> CombineError<E, E> for DefaultCombine<E> {
-    type Out = E;
-
-    fn left(&mut self, ea: E) {
-        self.data = Some(ea);
-    }
-
-    fn right(&mut self, eb: E) {
-        self.data = Some(eb);
-    }
-
-    fn finish(self) -> Self::Out {
-        self.data.unwrap()
-    }
-}
-
-pub struct CheckState2<T: Sized, S> 
+pub struct CheckState<T: Sized, S> 
     where Self: Sized 
 {
     value: T,
@@ -91,16 +53,16 @@ struct And<A, B, C> {
     _combine: PhantomData<C>
 }
 
-impl<T, Pre, A, B, C> Check2<T, Pre> for And<A, B, C>
+impl<T, Pre, A, B, C> Check<T, Pre> for And<A, B, C>
 where
-    A: Check2<T, Pre>,
-    B: Check2<T, A::State>,
+    A: Check<T, Pre>,
+    B: Check<T, A::State>,
     C: CombineErrorBuilder<A::Error, B::Error>,
 {
     type State = B::State;
     type Error =  <C::Combiner as CombineError<A::Error, B::Error>>::Out;
 
-    fn check(self, value: CheckState2<T, Pre>)
+    fn check(self, value: CheckState<T, Pre>)
         -> CheckOutcome<T, Self::State, Self::Error>
     {
         let mut combine = <C as CombineErrorBuilder<A::Error, B::Error>>::build();
@@ -118,7 +80,7 @@ where
                         // success A and failed B
                         combine.right(err);
                         CheckOutcome::Failed{
-                            state: CheckState2 { value: state.value, _state: PhantomData },
+                            state: CheckState { value: state.value, _state: PhantomData },
                             err: combine.finish()
                         }
                     }
@@ -128,7 +90,7 @@ where
                 // failed B
                 combine.left(err);
                 CheckOutcome::Failed{
-                    state: CheckState2 { value: state.value, _state: PhantomData },
+                    state: CheckState { value: state.value, _state: PhantomData },
                     err: combine.finish()
                 }
             }
@@ -142,16 +104,16 @@ struct Or<A, B, C> {
     _combine: PhantomData<C>
 }
 
-impl<T, Pre, A, B, C> Check2<T, Pre> for Or<A, B, C>
+impl<T, Pre, A, B, C> Check<T, Pre> for Or<A, B, C>
 where
-    A: Check2<T, Pre>,
-    B: Check2<T, A::State>,
+    A: Check<T, Pre>,
+    B: Check<T, A::State>,
     C: CombineErrorBuilder<A::Error, B::Error>,
 {
     type State = B::State;
     type Error = C::Out;
 
-    fn check(self, value: CheckState2<T, Pre>)
+    fn check(self, value: CheckState<T, Pre>)
         -> CheckOutcome<T, Self::State, Self::Error>
     {
         let mut combine = <C as CombineErrorBuilder<A::Error, B::Error>>::build();
@@ -169,7 +131,7 @@ where
                         // success A and failed B
                         combine.right(err);
                         CheckOutcome::Failed{
-                            state: CheckState2 { value: state.value, _state: PhantomData },
+                            state: CheckState { value: state.value, _state: PhantomData },
                             err: combine.finish()
                         }
                     }
@@ -189,7 +151,7 @@ where
                         // success A and failed B
                         combine.right(err);
                         CheckOutcome::Failed{
-                            state: CheckState2 { value: state.value, _state: PhantomData },
+                            state: CheckState { value: state.value, _state: PhantomData },
                             err: combine.finish()
                         }
                     }
@@ -199,14 +161,14 @@ where
     }
 }
 
-impl<T, Pre, State, F, E> Check2<T, Pre> for F
+impl<T, Pre, State, F, E> Check<T, Pre> for F
 where
-    F: Fn(CheckState2<T, Pre>) -> CheckOutcome<T, State, E>,
+    F: Fn(CheckState<T, Pre>) -> CheckOutcome<T, State, E>,
 {
     type State = State;
     type Error = E;
 
-    fn check(self, value: CheckState2<T, Pre>)
+    fn check(self, value: CheckState<T, Pre>)
         -> CheckOutcome<T, Self::State, Self::Error>
     {
         self(value)
@@ -223,78 +185,50 @@ struct ErrState<CheckStartsWithHello, CheckMin3> {
 }
 
 #[derive(Debug)]
-enum ValidateErr2 {
+enum ValidateErr {
     CheckStartsWithHelloErr,
     CheckMin6Err,
 }
 
 fn check_starts_with_hello(
-    data: CheckState2<&str, ErrState<unchecked, unchecked>>) 
+    data: CheckState<&str, ErrState<unchecked, unchecked>>) 
 -> 
-CheckOutcome<&str, ErrState<checked, unchecked>, ValidateErr2>
+CheckOutcome<&str, ErrState<checked, unchecked>, ValidateErr>
 {
     if data.value.starts_with("hello") {
         CheckOutcome::Passed(
-            CheckState2 { value: data.value, _state: PhantomData }
+            CheckState { value: data.value, _state: PhantomData }
         )
     } else {
         CheckOutcome::Failed{
-            state: CheckState2 { value: data.value, _state: PhantomData },
-            err: ValidateErr2::CheckStartsWithHelloErr
+            state: CheckState { value: data.value, _state: PhantomData },
+            err: ValidateErr::CheckStartsWithHelloErr
         }
     }
 }
 
 fn check_min6(
-    data: CheckState2<&str, ErrState<checked, unchecked>>) 
+    data: CheckState<&str, ErrState<checked, unchecked>>) 
 -> 
-CheckOutcome<&str, ErrState<checked, checked>, ValidateErr2>
+CheckOutcome<&str, ErrState<checked, checked>, ValidateErr>
 {
     if 6 < data.value.len() {
         CheckOutcome::Passed(
-            CheckState2 { value: data.value, _state: PhantomData }
+            CheckState { value: data.value, _state: PhantomData }
         )
     }
     else {
         CheckOutcome::Failed{
-            state: CheckState2 { value: data.value, _state: PhantomData },
-            err: ValidateErr2::CheckMin6Err
+            state: CheckState { value: data.value, _state: PhantomData },
+            err: ValidateErr::CheckMin6Err
         }
-    }
-}
-
-struct CustomCombine<T> {
-    data: Vec<T>
-}
-
-impl<E> CombineErrorBuilder<E, E> for CustomCombine<E> {
-    type Combiner = CustomCombine<E>;
-    type Out = Vec<E>;
-
-    fn build() -> Self::Combiner {
-        CustomCombine { data: Vec::new() }
-    }
-}
-
-impl<T> CombineError<T, T> for CustomCombine<T> {
-    type Out = Vec<T>;
-
-    fn left(&mut self, ea: T) {
-        self.data.push(ea);
-    }
-
-    fn right(&mut self, eb: T) {
-        self.data.push(eb);
-    }
-
-    fn finish(self) -> Self::Out {
-        self.data
     }
 }
 
 #[cfg(test)]
 mod tests_n {
     use super::*;
+    use crate::cmberr::CustomCombine;
 
     #[test]
     fn n_works00() {
@@ -302,12 +236,12 @@ mod tests_n {
 
         let checker =
             check_starts_with_hello
-            .or::<_, CustomCombine<ValidateErr2>>(check_min6);
+            .or::<_, CustomCombine<ValidateErr>>(check_min6);
 
             // .and::<_, DefaultCombine>(check_min6);
 
         let r = checker.check(
-            CheckState2 { value: s, _state: PhantomData }
+            CheckState { value: s, _state: PhantomData }
         );
 
         match r {
