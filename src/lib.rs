@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+pub mod n;
+
 pub trait Check<T, PreCheckState>
     where Self: Sized
 {
@@ -20,7 +22,7 @@ pub struct CheckState<T: Sized, S>
     where Self: Sized 
 {
     value: T,
-    _state: PhantomData<S>
+    _state: PhantomData<S> // checked or not
 }
 
 pub struct And<A, B, E> {
@@ -81,7 +83,7 @@ pub struct ErrState<CheckStartsWithHello, CheckMin3> {
     _check_min3: PhantomData<CheckMin3>
 }
 
-pub fn check_starts_with_hello(
+fn check_starts_with_hello(
     data: CheckState<&str, ErrState<unchecked, unchecked>>) 
 -> Result<CheckState<&str, ErrState<checked, unchecked>>, ValidateErr> 
 {
@@ -96,7 +98,7 @@ pub fn check_starts_with_hello(
     }
 }
 
-pub fn check_min3(
+fn check_min3(
     data: CheckState<&str, ErrState<checked, unchecked>>
     )
 -> Result<CheckState<&str, ErrState<checked, checked>>, ValidateErr> 
