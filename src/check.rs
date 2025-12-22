@@ -5,7 +5,7 @@ use crate::cmberr::{
     CombineError
 };
 
-trait Check<T, Pre> 
+pub trait Check<T, Pre> 
     where Self:Sized
 {
     type State;
@@ -31,14 +31,13 @@ trait Check<T, Pre>
     }
 }
 
-enum CheckOutcome<T, State, E> {
+pub enum CheckOutcome<T, State, E> {
     Passed(CheckState<T, State>),
     Failed{
         state: CheckState<T, State>,
         err: E
     },
 }
-
 
 pub struct CheckState<T: Sized, S> 
     where Self: Sized 
@@ -47,7 +46,7 @@ pub struct CheckState<T: Sized, S>
     _state: PhantomData<S>
 }
 
-struct And<A, B, C> {
+pub struct And<A, B, C> {
     a: A,
     b: B,
     _combine: PhantomData<C>
@@ -98,7 +97,7 @@ where
     }
 }
 
-struct Or<A, B, C> {
+pub struct Or<A, B, C> {
     a: A,
     b: B,
     _combine: PhantomData<C>
@@ -177,58 +176,58 @@ where
 
 // -------------------------------------------------
 
-struct checked;
-struct unchecked;
-struct ErrState<CheckStartsWithHello, CheckMin3> {
-    _check_starts_with_hello: PhantomData<CheckStartsWithHello>,
-    _check_min3: PhantomData<CheckMin3>
-}
-
-#[derive(Debug)]
-enum ValidateErr {
-    CheckStartsWithHelloErr,
-    CheckMin6Err,
-}
-
-fn check_starts_with_hello(
-    data: CheckState<&str, ErrState<unchecked, unchecked>>) 
--> 
-CheckOutcome<&str, ErrState<checked, unchecked>, ValidateErr>
-{
-    if data.value.starts_with("hello") {
-        CheckOutcome::Passed(
-            CheckState { value: data.value, _state: PhantomData }
-        )
-    } else {
-        CheckOutcome::Failed{
-            state: CheckState { value: data.value, _state: PhantomData },
-            err: ValidateErr::CheckStartsWithHelloErr
-        }
-    }
-}
-
-fn check_min6(
-    data: CheckState<&str, ErrState<checked, unchecked>>) 
--> 
-CheckOutcome<&str, ErrState<checked, checked>, ValidateErr>
-{
-    if 6 < data.value.len() {
-        CheckOutcome::Passed(
-            CheckState { value: data.value, _state: PhantomData }
-        )
-    }
-    else {
-        CheckOutcome::Failed{
-            state: CheckState { value: data.value, _state: PhantomData },
-            err: ValidateErr::CheckMin6Err
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests_n {
     use super::*;
     use crate::cmberr::CustomCombine;
+
+    struct Checked;
+    struct Unchecked;
+    struct ErrState<CheckStartsWithHello, CheckMin3> {
+        _check_starts_with_hello: PhantomData<CheckStartsWithHello>,
+        _check_min3: PhantomData<CheckMin3>
+    }
+
+    #[derive(Debug)]
+    enum ValidateErr {
+        CheckStartsWithHelloErr,
+        CheckMin6Err,
+    }
+
+    fn check_starts_with_hello(
+        data: CheckState<&str, ErrState<Unchecked, Unchecked>>) 
+    -> 
+    CheckOutcome<&str, ErrState<Checked, Unchecked>, ValidateErr>
+    {
+        if data.value.starts_with("hello") {
+            CheckOutcome::Passed(
+                CheckState { value: data.value, _state: PhantomData }
+            )
+        } else {
+            CheckOutcome::Failed{
+                state: CheckState { value: data.value, _state: PhantomData },
+                err: ValidateErr::CheckStartsWithHelloErr
+            }
+        }
+    }
+
+    fn check_min6(
+        data: CheckState<&str, ErrState<Checked, Unchecked>>) 
+    -> 
+    CheckOutcome<&str, ErrState<Checked, Checked>, ValidateErr>
+    {
+        if 6 < data.value.len() {
+            CheckOutcome::Passed(
+                CheckState { value: data.value, _state: PhantomData }
+            )
+        }
+        else {
+            CheckOutcome::Failed{
+                state: CheckState { value: data.value, _state: PhantomData },
+                err: ValidateErr::CheckMin6Err
+            }
+        }
+    }
 
     #[test]
     fn n_works00() {
@@ -245,10 +244,10 @@ mod tests_n {
         );
 
         match r {
-            CheckOutcome::Passed(v) => {
+            CheckOutcome::Passed(_v) => {
                 println!("Passed!");
             }
-            CheckOutcome::Failed{state, err} => {
+            CheckOutcome::Failed{state:_, err} => {
                 println!("Failed because");
                 println!("{:?}", err)
             }
