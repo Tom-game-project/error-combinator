@@ -70,7 +70,7 @@ impl <T, A, B, E, Pre, Mid, Next> Check<T, Pre> for And<A, B, E>
 
 // ------------------------------------
 
-pub enum ValidateErr {
+enum ValidateErr {
     NotStartsWithHello,
     NotEnoughLength,
 }
