@@ -60,6 +60,15 @@ impl<E> CombineErrorBuilder<E, E> for CustomCombine<E> {
     }
 }
 
+impl<E> CombineErrorBuilder<Vec<E>, E> for CustomCombine<E> {
+    type Combiner = CustomCombine<E>;
+    type Out = Vec<E>;
+
+    fn build() -> Self::Combiner {
+        CustomCombine { data: Vec::new() }
+    }
+}
+
 impl<T> CombineError<T, T> for CustomCombine<T> {
     type Out = Vec<T>;
 
@@ -75,3 +84,20 @@ impl<T> CombineError<T, T> for CustomCombine<T> {
         self.data
     }
 }
+
+impl<E> CombineError<Vec<E>, E> for CustomCombine<E> {
+    type Out = Vec<E>;
+
+    fn left(&mut self, ea: Vec<E>) {
+        self.data.extend(ea);
+    }
+
+    fn right(&mut self, eb: E) {
+        self.data.push(eb);
+    }
+
+    fn finish(self) -> Self::Out {
+        self.data
+    }
+}
+

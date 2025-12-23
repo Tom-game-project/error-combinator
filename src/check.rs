@@ -68,9 +68,7 @@ where
 
         match self.a.check(value) {
             CheckOutcome::Passed(v) => {
-                let tmp = self.b.check(v);
-
-                match tmp {
+                match self.b.check(v){
                     CheckOutcome::Passed(vv) => {
                         // success A and success B
                         CheckOutcome::Passed(vv)
@@ -86,7 +84,7 @@ where
                 }
             }
             CheckOutcome::Failed{state, err} => {
-                // failed B
+                // failed A
                 combine.left(err);
                 CheckOutcome::Failed{
                     state: CheckState { value: state.value, _state: PhantomData },
@@ -119,9 +117,8 @@ where
 
         match self.a.check(value) {
             CheckOutcome::Passed(v) => {
-                let tmp = self.b.check(v);
-
-                match tmp {
+                // success A
+                match self.b.check(v) {
                     CheckOutcome::Passed(vv) => {
                         // success A and success B
                         CheckOutcome::Passed(vv)
@@ -136,18 +133,19 @@ where
                     }
                 }
             }
-
             CheckOutcome::Failed{state, err} => {
-                // failed B
-                let tmp = self.b.check(state);
+                // failed A
                 combine.left(err);
-                match tmp {
+                match self.b.check(state) {
                     CheckOutcome::Passed(vv) => {
-                        // success A and success B
-                        CheckOutcome::Passed(vv)
+                        // failed A and success B
+                        CheckOutcome::Failed{
+                            state: CheckState { value: vv.value, _state: PhantomData },
+                            err: combine.finish()
+                        }
                     }
                     CheckOutcome::Failed{state, err} => {
-                        // success A and failed B
+                        // failed A and failed B
                         combine.right(err);
                         CheckOutcome::Failed{
                             state: CheckState { value: state.value, _state: PhantomData },
@@ -183,21 +181,25 @@ mod tests_n {
 
     struct Checked;
     struct Unchecked;
-    struct ErrState<CheckStartsWithHello, CheckMin3> {
+    struct ErrState<CheckStartsWithHello, CheckMin3, CheckEndsWithWorld, CheckIncludesAbc> {
         _check_starts_with_hello: PhantomData<CheckStartsWithHello>,
-        _check_min3: PhantomData<CheckMin3>
+        _check_min3: PhantomData<CheckMin3>,
+        _check_ends_with_world: PhantomData<CheckEndsWithWorld>,
+        _check_includes_abc: PhantomData<CheckIncludesAbc>
     }
 
     #[derive(Debug)]
     enum ValidateErr {
         CheckStartsWithHelloErr,
         CheckMin6Err,
+        CheckEndsWithWorldErr,
+        CheckIncludesAbcErr,
     }
 
     fn check_starts_with_hello(
-        data: CheckState<&str, ErrState<Unchecked, Unchecked>>) 
+        data: CheckState<&str, ErrState<Unchecked, Unchecked, Unchecked, Unchecked>>) 
     -> 
-    CheckOutcome<&str, ErrState<Checked, Unchecked>, ValidateErr>
+    CheckOutcome<&str, ErrState<Checked, Unchecked, Unchecked, Unchecked>, ValidateErr>
     {
         if data.value.starts_with("hello") {
             CheckOutcome::Passed(
@@ -212,9 +214,9 @@ mod tests_n {
     }
 
     fn check_min6(
-        data: CheckState<&str, ErrState<Checked, Unchecked>>) 
+        data: CheckState<&str, ErrState<Checked, Unchecked, Unchecked, Unchecked>>) 
     -> 
-    CheckOutcome<&str, ErrState<Checked, Checked>, ValidateErr>
+    CheckOutcome<&str, ErrState<Checked, Checked, Unchecked, Unchecked>, ValidateErr>
     {
         if 6 < data.value.len() {
             CheckOutcome::Passed(
@@ -229,13 +231,51 @@ mod tests_n {
         }
     }
 
+    fn check_ends_with_world(
+        data: CheckState<&str, ErrState<Checked, Checked, Unchecked, Unchecked>>) 
+    -> 
+    CheckOutcome<&str, ErrState<Checked, Checked, Checked, Unchecked>, ValidateErr>
+    {
+        if data.value.ends_with("world") {
+            CheckOutcome::Passed(
+                CheckState { value: data.value, _state: PhantomData }
+            )
+        } else {
+            CheckOutcome::Failed{
+                state: CheckState { value: data.value, _state: PhantomData },
+                err: ValidateErr::CheckEndsWithWorldErr
+            }
+        }
+    }
+
+    fn check_includes_abc(
+        data: CheckState<&str, ErrState<Checked, Checked, Checked, Unchecked>>) 
+    -> 
+    CheckOutcome<&str, ErrState<Checked, Checked, Checked, Checked>, ValidateErr>
+    {
+        if let Some(_) = data.value.find("abc") {
+            CheckOutcome::Passed(
+                CheckState { value: data.value, _state: PhantomData }
+            )
+        } else {
+            CheckOutcome::Failed{
+                state: CheckState { value: data.value, _state: PhantomData },
+                err: ValidateErr::CheckIncludesAbcErr
+            }
+        }
+    }
+
     #[test]
     fn n_works00() {
-        let s = "hello";
+        //let s = "hello abc world";
+        let s = " abc world";
+        let s = "hello world";
 
         let checker =
-            check_starts_with_hello
-            .or::<_, CustomCombine<ValidateErr>>(check_min6);
+            (check_starts_with_hello
+            .or::<_, CustomCombine<ValidateErr>>(check_min6))
+            .or::<_, CustomCombine<ValidateErr>>(check_ends_with_world)
+            .or::<_, CustomCombine<ValidateErr>>(check_includes_abc);
 
             // .and::<_, DefaultCombine>(check_min6);
 
