@@ -42,8 +42,14 @@ pub enum CheckOutcome<T, State, E> {
 pub struct CheckState<T: Sized, S> 
     where Self: Sized 
 {
-    value: T,
+    pub value: T,
     _state: PhantomData<S>
+}
+
+impl<T, S> CheckState<T, S> {
+    pub fn new(value: T) -> Self {
+        Self { value, _state: PhantomData }
+    }
 }
 
 pub struct And<A, B, C> {
@@ -177,7 +183,7 @@ where
 #[cfg(test)]
 mod tests_n {
     use super::*;
-    use crate::cmberr::CustomCombine;
+    use crate::cmberr::VecCombine;
 
     struct Checked;
     struct Unchecked;
@@ -267,15 +273,15 @@ mod tests_n {
 
     #[test]
     fn n_works00() {
-        //let s = "hello abc world";
-        let s = " abc world";
-        let s = "hello world";
+        let s = "hello abc world";
+        // let s = " abc world";
+        // let s = "hello world";
 
         let checker =
             (check_starts_with_hello
-            .or::<_, CustomCombine<ValidateErr>>(check_min6))
-            .or::<_, CustomCombine<ValidateErr>>(check_ends_with_world)
-            .or::<_, CustomCombine<ValidateErr>>(check_includes_abc);
+            .and::<_, VecCombine<ValidateErr>>(check_min6))
+            .and::<_, VecCombine<ValidateErr>>(check_ends_with_world)
+            .and::<_, VecCombine<ValidateErr>>(check_includes_abc);
 
             // .and::<_, DefaultCombine>(check_min6);
 

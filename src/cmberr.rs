@@ -47,29 +47,29 @@ impl<E> CombineError<E, E> for DefaultCombine<E> {
 
 // ======================= CustomCombine =======================
 
-pub struct CustomCombine<T> {
+pub struct VecCombine<T> {
     data: Vec<T>
 }
 
-impl<E> CombineErrorBuilder<E, E> for CustomCombine<E> {
-    type Combiner = CustomCombine<E>;
+impl<E> CombineErrorBuilder<E, E> for VecCombine<E> {
+    type Combiner = VecCombine<E>;
     type Out = Vec<E>;
 
     fn build() -> Self::Combiner {
-        CustomCombine { data: Vec::new() }
+        VecCombine { data: Vec::new() }
     }
 }
 
-impl<E> CombineErrorBuilder<Vec<E>, E> for CustomCombine<E> {
-    type Combiner = CustomCombine<E>;
+impl<E> CombineErrorBuilder<Vec<E>, E> for VecCombine<E> {
+    type Combiner = VecCombine<E>;
     type Out = Vec<E>;
 
     fn build() -> Self::Combiner {
-        CustomCombine { data: Vec::new() }
+        VecCombine { data: Vec::new() }
     }
 }
 
-impl<T> CombineError<T, T> for CustomCombine<T> {
+impl<T> CombineError<T, T> for VecCombine<T> {
     type Out = Vec<T>;
 
     fn left(&mut self, ea: T) {
@@ -85,7 +85,7 @@ impl<T> CombineError<T, T> for CustomCombine<T> {
     }
 }
 
-impl<E> CombineError<Vec<E>, E> for CustomCombine<E> {
+impl<E> CombineError<Vec<E>, E> for VecCombine<E> {
     type Out = Vec<E>;
 
     fn left(&mut self, ea: Vec<E>) {
