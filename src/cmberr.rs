@@ -21,7 +21,7 @@ pub struct DefaultCombine<E> {
 }
 
 impl<E> CombineErrorBuilder<E, E> for DefaultCombine<E> {
-    type Combiner = DefaultCombine<E>;
+    type Combiner = Self;
     type Out = E;
 
     fn build() -> Self::Combiner {
@@ -52,7 +52,7 @@ pub struct VecCombine<T> {
 }
 
 impl<E> CombineErrorBuilder<E, E> for VecCombine<E> {
-    type Combiner = VecCombine<E>;
+    type Combiner = Self;
     type Out = Vec<E>;
 
     fn build() -> Self::Combiner {
@@ -61,7 +61,7 @@ impl<E> CombineErrorBuilder<E, E> for VecCombine<E> {
 }
 
 impl<E> CombineErrorBuilder<Vec<E>, E> for VecCombine<E> {
-    type Combiner = VecCombine<E>;
+    type Combiner = Self;
     type Out = Vec<E>;
 
     fn build() -> Self::Combiner {

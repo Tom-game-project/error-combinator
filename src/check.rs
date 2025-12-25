@@ -15,9 +15,9 @@ pub trait Check<T, Pre>
         -> CheckOutcome<T, Self::State, Self::Error>;
 
     fn and<B, C>(self, b: B) -> And<Self, B, C>
-    where
-        B: Check<T, Self::State>,
-        C: CombineErrorBuilder<Self::Error, B::Error>
+        where
+            B: Check<T, Self::State>,
+            C: CombineErrorBuilder<Self::Error, B::Error>
     {
         And { a: self, b, _combine:PhantomData }
     }
@@ -209,11 +209,11 @@ mod tests_n {
     {
         if data.value.starts_with("hello") {
             CheckOutcome::Passed(
-                CheckState { value: data.value, _state: PhantomData }
+                CheckState::new(data.value)
             )
         } else {
             CheckOutcome::Failed{
-                state: CheckState { value: data.value, _state: PhantomData },
+                state: CheckState::new(data.value),
                 err: ValidateErr::CheckStartsWithHelloErr
             }
         }
@@ -226,12 +226,12 @@ mod tests_n {
     {
         if 6 < data.value.len() {
             CheckOutcome::Passed(
-                CheckState { value: data.value, _state: PhantomData }
+                CheckState::new(data.value),
             )
         }
         else {
             CheckOutcome::Failed{
-                state: CheckState { value: data.value, _state: PhantomData },
+                state: CheckState::new(data.value),
                 err: ValidateErr::CheckMin6Err
             }
         }
@@ -244,11 +244,11 @@ mod tests_n {
     {
         if data.value.ends_with("world") {
             CheckOutcome::Passed(
-                CheckState { value: data.value, _state: PhantomData }
+                CheckState::new(data.value),
             )
         } else {
             CheckOutcome::Failed{
-                state: CheckState { value: data.value, _state: PhantomData },
+                state: CheckState::new(data.value),
                 err: ValidateErr::CheckEndsWithWorldErr
             }
         }
@@ -283,10 +283,8 @@ mod tests_n {
             .and::<_, VecCombine<ValidateErr>>(check_ends_with_world)
             .and::<_, VecCombine<ValidateErr>>(check_includes_abc);
 
-            // .and::<_, DefaultCombine>(check_min6);
-
         let r = checker.check(
-            CheckState { value: s, _state: PhantomData }
+            CheckState::new(s)
         );
 
         match r {

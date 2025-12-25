@@ -1,3 +1,10 @@
+///
+/// ```sh
+/// cargo run --example validation00
+/// ```
+///
+///
+
 use error_combinator::{
     check::{
         Check, CheckOutcome, CheckState
