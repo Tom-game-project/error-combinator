@@ -33,3 +33,7 @@ let checker = check_starts_with_hello
     .and::<_, VecCombine<ValidateErr>>(check_includes_abc);
 ```
 
+## LICENSE
+
+[MIT](./LICENSE-MIT)
+

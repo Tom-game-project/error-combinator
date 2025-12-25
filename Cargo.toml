@@ -2,5 +2,18 @@
 name = "error-combinator"
 version = "0.1.0"
 edition = "2024"
+authors = ["muranaka tomonari <tom.ipynb@gmail.com>"]
+license-file = "LICENSE-MIT"
+repository = "https://github.com/Tom-game-project/error-combinator"
+keywords = ["error", "error-handling", "combinator"]
+categories = ["rust-patterns"]
+readme = "README.md"
+
+exclude = [
+    ".github",
+    ".gitignore",
+    "tests/*",
+    "examples/*"
+]
 
 [dependencies]
