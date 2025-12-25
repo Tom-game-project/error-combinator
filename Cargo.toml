@@ -8,6 +8,7 @@ repository = "https://github.com/Tom-game-project/error-combinator"
 keywords = ["error", "error-handling", "combinator"]
 categories = ["rust-patterns"]
 readme = "README.md"
+description = "Type-driven error composition with functional combinators"
 
 exclude = [
     ".github",

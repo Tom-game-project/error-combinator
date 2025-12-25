@@ -1,7 +1,5 @@
-
 #[cfg(test)]
 mod tests_n {
-    use super::*;
     use error_combinator::{
         check::{
             Check, CheckOutcome, CheckState
@@ -98,6 +96,7 @@ mod tests_n {
         }
     }
 
+    /// and chain test 
     #[test]
     fn n_works00() {
         let check_list  = [
@@ -142,6 +141,7 @@ mod tests_n {
 
     }
 
+    /// or chain test
     #[test]
     fn n_works01() {
         let check_list  = [
