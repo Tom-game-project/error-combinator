@@ -1,12 +1,12 @@
 name: Test
 
 on:
-  # トリガー1: masterブランチに向けたPRが作成・更新された時
+  # Trigger 1: When a PR is created or updated for the master branch
   pull_request:
     branches:
       - master
 
-  # トリガー2: "v" で始まるタグ（例: v1.0.0）がpushされた時
+  # Trigger 2: When a tag starting with "v" (e.g. v1.0.0) is pushed
   push:
     tags:
       - "v*" 
@@ -17,15 +17,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ソースコードをチェックアウト
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Rustのツールチェーン（cargo, rustc）をインストール
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      # キャッシュの設定（ビルド時間の短縮のため推奨）
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
@@ -35,6 +32,5 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      # テストの実行
       - name: Run tests
         run: cargo test --verbose
