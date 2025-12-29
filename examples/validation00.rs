@@ -1,9 +1,8 @@
-///
-/// ```sh
-/// cargo run --example validation00
-/// ```
-///
-///
+//!
+//! ```sh
+//! cargo run --example validation00
+//! ```
+//!
 
 use error_combinator::{
     check::{
@@ -114,8 +113,8 @@ fn main() {
 
     for s in check_list {
         let checker =
-            (check_starts_with_hello
-            .and::<_, VecCombine<ValidateErr>>(check_min6))
+            check_starts_with_hello
+            .and::<_, VecCombine<ValidateErr>>(check_min6)
             .and::<_, VecCombine<ValidateErr>>(check_ends_with_world)
             .and::<_, VecCombine<ValidateErr>>(check_includes_abc);
 
