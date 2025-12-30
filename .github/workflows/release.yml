@@ -33,7 +33,7 @@ jobs:
           echo "Git Tag: $TAG_VERSION"
           echo "Cargo Version: $CARGO_VERSION"
 
-          if; then
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
             echo "::error::Version mismatch! Git tag is v$TAG_VERSION but Cargo.toml says $CARGO_VERSION"
             exit 1
           fi
