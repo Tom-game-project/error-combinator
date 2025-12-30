@@ -3,7 +3,7 @@ use error_combinator::{check::{
         CheckOutcome, // struct
         CheckState,   // struct
         ResultCheck,  // struct
-        ResultCheckBuilder,  // struct
+        ResultCheckBuilder, check_noref,  // struct
     }, cmberr::VecCombine};
 
 use std::marker::PhantomData;
@@ -38,10 +38,8 @@ fn check_start_with_0(data: &Vec<i32>) -> Result<(), ValidateErr> {
 
 fn main() {
     let s= vec![0,1,2,3,4,5,6,7,8,9];
-    let checker0 = 
-        ResultCheckBuilder::<ErrState<Unchecked, Unchecked>, ErrState<Checked, Unchecked>>::build(check_length_10);
-    let checker1 = 
-        ResultCheckBuilder::<ErrState<Checked, Unchecked>, ErrState<Checked, Checked>>::build(check_start_with_0);
+    let checker0 = check_noref::<Vec<i32>, ErrState<Unchecked, Unchecked>, ErrState<Checked, Unchecked>, _, _>(check_length_10);
+    let checker1 = check_noref::<Vec<i32>, ErrState<Checked, Unchecked>, ErrState<Checked, Checked>, _, _>(check_start_with_0);
 
     let checker = 
         checker0

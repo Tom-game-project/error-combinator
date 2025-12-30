@@ -178,56 +178,41 @@ where
     }
 }
 
-pub struct ResultCheck<F, T, PreState, PostState, E>
+pub fn check_ref<'a, T: ?Sized, Pre, Post, E, F>(
+    f: F
+) -> impl Check<&'a T, Pre, PostState = Post, Error = E>
+where
+    F: Fn(&T) -> Result<(), E>,
 {
-    func: F,
-    _pre: PhantomData<PreState>,
-    _state: PhantomData<PostState>,
-    _func_arg: PhantomData<T>,
-    _func_ret: PhantomData<E>,
-}
-
-pub struct ResultCheckBuilder<PreState, PostState> {
-    _pre_state: PhantomData<PreState>,
-    _post_state: PhantomData<PostState>,
-}
-
-
-impl<PreState, PostState> ResultCheckBuilder<PreState, PostState> {
-    pub fn build<F, T, E>(func: F) -> ResultCheck<F, T, PreState, PostState, E>
-        where F: Fn(&T) -> Result<(), E>
-    {
-        let s = Self { _pre_state: PhantomData, _post_state: PhantomData };
-        ResultCheck { 
-            func: func, 
-            _pre: s._pre_state, 
-            _state: s._post_state, 
-            _func_arg: PhantomData, 
-            _func_ret: PhantomData 
+    move |state: CheckState<&'a T, Pre>| {
+        match f(state.value) {
+            Ok(()) => CheckOutcome::Passed(CheckState::new(state.value)),
+            Err(e) => CheckOutcome::Failed {
+                state: CheckState::new(state.value),
+                err: e,
+            },
         }
     }
 }
 
-impl<T, PreState, PostState, F, E> Check<T, PreState> for ResultCheck<F, T, PreState, PostState, E>
-where
+
+pub fn check_noref<T: Sized, Pre, Post, E, F>( 
+    f: F
+) -> impl Check<T, Pre, PostState = Post, Error = E>
+where 
     F: Fn(&T) -> Result<(), E>,
 {
-    type PostState = PostState;
-    type Error = E;
-
-    fn check(self, value: CheckState<T, PreState>)
-            -> CheckOutcome<T, Self::PostState, Self::Error> {
-          match (self.func)(&value.value) {
+    move |state: CheckState<T, Pre>| {
+          match f(&state.value) {
              Ok(_v) => {
                  CheckOutcome::Passed(
-                     CheckState::new(value.value)
+                     CheckState::new(state.value)
                  )
              },
              Err(e) => CheckOutcome::Failed {
-                 state: CheckState::new(value.value),
+                 state: CheckState::new(state.value),
                  err: e,
              },
          }
     }
 }
-
