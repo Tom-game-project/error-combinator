@@ -1,6 +1,6 @@
 //!
 //! ```sh
-//! cargo run --example validation00
+//! cargo run --example validation01
 //! ```
 //!
 

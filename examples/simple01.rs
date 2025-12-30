@@ -2,8 +2,7 @@ use error_combinator::{check::{
         Check,        // trait
         CheckOutcome, // struct
         CheckState,   // struct
-        ResultCheck,  // struct
-        ResultCheckBuilder, check_noref,  // struct
+        check_noref
     }, cmberr::VecCombine};
 
 use std::marker::PhantomData;

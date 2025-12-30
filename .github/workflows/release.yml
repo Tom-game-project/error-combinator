@@ -30,7 +30,7 @@ jobs:
           # 2. Get the version from Cargo.toml (using cargo metadata command)
           CARGO_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
 
-          echo "Git Tag: v$TAG_VERSION"
+          echo "Git Tag: $TAG_VERSION"
           echo "Cargo Version: $CARGO_VERSION"
 
           if; then
