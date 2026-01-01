@@ -6,7 +6,9 @@
 
 use error_combinator::{
     check::{
-        Check, CheckOutcome, CheckState, check_ref
+        Check,
+        CheckState, 
+        check_ref
     },
     cmberr::VecCombine
 };
@@ -102,7 +104,10 @@ fn main() {
                 _, 
                 _
             >(check_starts_with_hello)
-            .or::<_, VecCombine<ValidateErr>>(
+            .or::<
+                _, 
+                VecCombine<ValidateErr>
+            >(
             check_ref::<
                 str,
                 ErrState<Checked, Unchecked, Unchecked, Unchecked>,
@@ -111,7 +116,10 @@ fn main() {
                 _
             >(check_min6)
             )
-            .or::<_, VecCombine<ValidateErr>>(
+            .or::<
+                _, 
+                VecCombine<ValidateErr>>
+            (
             check_ref::<
                 str,
                 ErrState<Checked, Checked, Unchecked, Unchecked>,
@@ -119,7 +127,10 @@ fn main() {
                 _,
                 _
             >(check_ends_with_world))
-            .or::<_, VecCombine<ValidateErr>>(
+            .or::<
+                _, 
+                VecCombine<ValidateErr>>
+            (
             check_ref::<
                 str,
                 ErrState<Checked, Checked, Checked, Unchecked>,
@@ -133,11 +144,11 @@ fn main() {
         );
 
         println!("test case: \"{}\"", s);
-        match r {
-            CheckOutcome::Passed(_v) => {
-                println!("Passed!");
+        match r.to_result() {
+            Ok(v) => {
+                println!("\"{}\" Passed!", v);
             }
-            CheckOutcome::Failed{state:_, err} => {
+            Err(err) => {
                 println!("Failed because");
                 println!("{:?}", err)
             }

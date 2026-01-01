@@ -39,6 +39,30 @@ pub enum CheckOutcome<T, State, E> {
     },
 }
 
+impl<T, State, E> CheckOutcome<T, State, E> {
+    pub fn to_result(self) -> Result<T, E> {
+        match self {
+            CheckOutcome::Passed(v) => {
+                Ok(v.value)
+            }
+            CheckOutcome::Failed{state:_, err} => {
+                Err(err)
+            }
+        }
+    }
+
+    pub fn to_result_with_data(self) -> Result<T, (T, E)> {
+        match self {
+            CheckOutcome::Passed(v) => {
+                Ok(v.value)
+            }
+            CheckOutcome::Failed{state, err} => {
+                Err((state.value, err))
+            }
+        }
+    }
+}
+
 pub struct CheckState<T: Sized, S> 
     where Self: Sized 
 {

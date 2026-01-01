@@ -133,11 +133,11 @@ fn main() {
         );
 
         println!("test case: \"{}\"", s);
-        match r {
-            CheckOutcome::Passed(_v) => {
-                println!("Passed!");
+        match r.to_result() {
+            Ok(v) => {
+                println!("\"{}\" Passed!", v);
             }
-            CheckOutcome::Failed{state:_, err} => {
+            Err(err) => {
                 println!("Failed because");
                 println!("{:?}", err)
             }
