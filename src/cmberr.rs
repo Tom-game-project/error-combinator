@@ -45,7 +45,7 @@ impl<E> CombineError<E, E> for DefaultCombine<E> {
     }
 }
 
-// ======================= CustomCombine =======================
+// ======================= VecCombine =======================
 
 pub struct VecCombine<T> {
     data: Vec<T>
